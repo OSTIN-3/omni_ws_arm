@@ -1,0 +1,28 @@
+digraph G {
+"body_link" -> "base_laser"[label=" Broadcaster: Authority undetectable\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 0.0\nOldest transform: 0.0\n"];
+"base_link" -> "horizontal_laser_link"[label=" Broadcaster: Authority undetectable\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 0.0\nOldest transform: 0.0\n"];
+"base_footprint" -> "base_link"[label=" Broadcaster: Authority undetectable\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 0.0\nOldest transform: 0.0\n"];
+"base_link" -> "imu_link"[label=" Broadcaster: Authority undetectable\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 0.0\nOldest transform: 0.0\n"];
+"base_link" -> "vertical_laser_link"[label=" Broadcaster: Authority undetectable\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 0.0\nOldest transform: 0.0\n"];
+"base_link" -> "caster_link_front"[label=" Broadcaster: Authority undetectable\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 0.0\nOldest transform: 0.0\n"];
+"base_link" -> "caster_link_rear"[label=" Broadcaster: Authority undetectable\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 0.0\nOldest transform: 0.0\n"];
+"base_link" -> "laser_link"[label=" Broadcaster: Authority undetectable\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 0.0\nOldest transform: 0.0\n"];
+"gripper_base" -> "gripper_left2"[label=" Broadcaster: Authority undetectable\nAverage rate: 14.386\nBuffer length: 10.01\nMost recent transform: 1765261626.476505\nOldest transform: 1765261616.466526\n"];
+"link6" -> "gripper_base"[label=" Broadcaster: Authority undetectable\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 0.0\nOldest transform: 0.0\n"];
+"gripper_base" -> "gripper_right2"[label=" Broadcaster: Authority undetectable\nAverage rate: 14.386\nBuffer length: 10.01\nMost recent transform: 1765261626.476505\nOldest transform: 1765261616.466526\n"];
+"gripper_base" -> "gripper_right3"[label=" Broadcaster: Authority undetectable\nAverage rate: 14.386\nBuffer length: 10.01\nMost recent transform: 1765261626.476505\nOldest transform: 1765261616.466526\n"];
+"gripper_base" -> "gripper_left3"[label=" Broadcaster: Authority undetectable\nAverage rate: 14.386\nBuffer length: 10.01\nMost recent transform: 1765261626.476505\nOldest transform: 1765261616.466526\n"];
+"gripper_left3" -> "gripper_left1"[label=" Broadcaster: Authority undetectable\nAverage rate: 14.386\nBuffer length: 10.01\nMost recent transform: 1765261626.476505\nOldest transform: 1765261616.466526\n"];
+"gripper_right3" -> "gripper_right1"[label=" Broadcaster: Authority undetectable\nAverage rate: 14.386\nBuffer length: 10.01\nMost recent transform: 1765261626.476505\nOldest transform: 1765261616.466526\n"];
+"base" -> "link1"[label=" Broadcaster: Authority undetectable\nAverage rate: 14.386\nBuffer length: 10.01\nMost recent transform: 1765261626.476505\nOldest transform: 1765261616.466526\n"];
+"world" -> "base"[label=" Broadcaster: Authority undetectable\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 0.0\nOldest transform: 0.0\n"];
+"link1" -> "link2"[label=" Broadcaster: Authority undetectable\nAverage rate: 14.386\nBuffer length: 10.01\nMost recent transform: 1765261626.476505\nOldest transform: 1765261616.466526\n"];
+"link2" -> "link3"[label=" Broadcaster: Authority undetectable\nAverage rate: 14.386\nBuffer length: 10.01\nMost recent transform: 1765261626.476505\nOldest transform: 1765261616.466526\n"];
+"link3" -> "link4"[label=" Broadcaster: Authority undetectable\nAverage rate: 14.386\nBuffer length: 10.01\nMost recent transform: 1765261626.476505\nOldest transform: 1765261616.466526\n"];
+"link4" -> "link5"[label=" Broadcaster: Authority undetectable\nAverage rate: 14.386\nBuffer length: 10.01\nMost recent transform: 1765261626.476505\nOldest transform: 1765261616.466526\n"];
+"link5" -> "link6"[label=" Broadcaster: Authority undetectable\nAverage rate: 14.386\nBuffer length: 10.01\nMost recent transform: 1765261626.476505\nOldest transform: 1765261616.466526\n"];
+edge [style=invis];
+ subgraph cluster_legend { style=bold; color=black; label ="view_frames Result";
+"Recorded at time: 1765261626.6181974"[ shape=plaintext ] ;
+}->"world";
+}
