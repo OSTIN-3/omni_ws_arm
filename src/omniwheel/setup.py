@@ -12,14 +12,8 @@ setup(
         ('share/ament_index/resource_index/packages',
             ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
-        
-        # Launch 파일을 설치 폴더로 복사합니다.
         (os.path.join('share', package_name, 'launch'), glob(os.path.join('launch', '*launch.[py]*'))),
-        
-        # URDF 파일을 설치 폴더로 복사합니다.
         (os.path.join('share', package_name, 'urdf'), glob(os.path.join('urdf', '*.urdf'))),
-
-        # ⭐⭐ 추가된 부분: 맵 파일 (map_q.pgm, map_q.yaml)을 설치 폴더로 복사합니다. ⭐⭐
         (os.path.join('share', package_name, 'maps'), glob(os.path.join('maps', '*.*'))),
     ],
     install_requires=['setuptools'],
@@ -31,10 +25,14 @@ setup(
     tests_require=['pytest', 'pyserial'],
     entry_points={
         'console_scripts': [
+            # 1. 메인 구동 노드
             'omnirun = omniwheel.omnirun:main',
+            
+            # 2. 키보드 텔레옵 노드
             'teleop = omniwheel.teleop:main',
-            'omnibridge = omniwheel.omnibridge:main',
-            'omni_teleop = omniwheel.omni_teleop:main',
+            
+            # 3. [주석처리] 로봇팔 제어 노드 (파일이 없거나 안 쓸 경우)
+            # 'arm_controller = omniwheel.arm_controller:main',
         ],
     },
 )
