@@ -34,6 +34,7 @@ setup(
             'omnirun = omniwheel.omnirun:main',
             'teleop = omniwheel.teleop:main',
             'omnibridge = omniwheel.omnibridge:main',
+            'omni_teleop = omniwheel.omni_teleop:main',
         ],
     },
 )
