@@ -1,0 +1,99 @@
+<?xml version="1.0"?>
+<robot name="three_wheeled_robot">
+
+  <material name="blue">
+    <color rgba="0 0 0.8 1"/>
+  </material>
+  <material name="black">
+    <color rgba="0 0 0 1"/>
+  </material>
+  <material name="red">
+    <color rgba="1 0 0 1"/>
+  </material>
+
+  <link name="base_link">
+    <visual>
+      <geometry>
+        <cylinder length="0.1" radius="0.2"/>
+      </geometry>
+      <material name="blue"/>
+    </visual>
+    <collision>
+      <geometry>
+        <cylinder length="0.1" radius="0.2"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <link name="laser_link">
+    <visual>
+      <geometry>
+        <cylinder length="0.03" radius="0.03"/>
+      </geometry>
+      <material name="red"/>
+    </visual>
+    <collision>
+      <geometry>
+        <cylinder length="0.03" radius="0.03"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <joint name="laser_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="laser_link"/>
+    <origin xyz="0.108162 0 0.065" rpy="0 0 0"/>
+  </joint>
+
+  <link name="wheel_1_link">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 1.5708 0"/> 
+      <geometry>
+        <cylinder length="0.02" radius="0.04"/>
+      </geometry>
+      <material name="black"/>
+    </visual>
+  </link>
+
+  <joint name="wheel_1_joint" type="continuous">
+    <parent link="base_link"/>
+    <child link="wheel_1_link"/>
+    <origin xyz="0.105 0.18187 -0.05" rpy="0 0 1.0472"/>
+    <axis xyz="1 0 0"/>
+  </joint>
+
+  <link name="wheel_2_link">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 1.5708 0"/>
+      <geometry>
+        <cylinder length="0.02" radius="0.04"/>
+      </geometry>
+      <material name="black"/>
+    </visual>
+  </link>
+
+  <joint name="wheel_2_joint" type="continuous">
+    <parent link="base_link"/>
+    <child link="wheel_2_link"/>
+    <origin xyz="-0.21 0 -0.05" rpy="0 0 3.14159"/>
+    <axis xyz="1 0 0"/>
+  </joint>
+
+  <link name="wheel_3_link">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 1.5708 0"/>
+      <geometry>
+        <cylinder length="0.02" radius="0.04"/>
+      </geometry>
+      <material name="black"/>
+    </visual>
+  </link>
+
+  <joint name="wheel_3_joint" type="continuous">
+    <parent link="base_link"/>
+    <child link="wheel_3_link"/>
+    <origin xyz="0.105 -0.18187 -0.05" rpy="0 0 -1.0472"/>
+    <axis xyz="1 0 0"/>
+  </joint>
+
+</robot>
