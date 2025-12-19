@@ -1,0 +1,63 @@
+### ekf.yaml ###
+ekf_filter_node:
+  ros__parameters:
+    frequency: 30.0
+    two_d_mode: true      # 2D 로봇이므로 Z, Roll, Pitch 무시
+    publish_tf: true      # EKF가 odom -> base_link TF를 발행
+
+    map_frame: map
+    odom_frame: odom
+    base_link_frame: base_link
+    world_frame: odom     # 로컬라이제이션 (odom 좌표계 기준)
+
+    # ---------------------------------------------------------
+    # 1. 휠 오도메트리 (STM32 -> Python에서 발행)
+    # ---------------------------------------------------------
+    odom0: /odom
+
+    # 설정 순서:
+    # [x,  y,  z,
+    #  roll, pitch, yaw,
+    #  vx, vy, vz,
+    #  vroll, vpitch, vyaw,
+    #  ax, ay, az]
+    
+    odom0_config: [false, false, false,
+                   false, false, false,
+                   true,  true,  false,  # vx, vy (옴니휠이므로 vy 필수!)
+                   false, false, true,   # vyaw (회전 속도)
+                   false, false, false]
+                   
+    # [설명]
+    # 위치(x,y) 대신 속도(vx,vy)를 사용하는 이유:
+    # STM32가 계산한 좌표보다 EKF가 속도를 적분하여 위치를 추정하는 것이
+    # IMU와 융합될 때 훨씬 부드럽습니다.
+    # differential을 false로 두기 위해 위치는 false로 끕니다.
+    
+    odom0_queue_size: 10
+    odom0_nodelay: true
+    odom0_differential: false
+    odom0_relative: false
+
+    # ---------------------------------------------------------
+    # 2. IMU 센서 (STM32 -> Python에서 발행)
+    # ---------------------------------------------------------
+    imu0: /imu/data
+    
+    imu0_config: [false, false, false,
+                  false, false, false,
+                  false, false, false,
+                  false, false, true,   # vyaw (Z축 각속도 - Gyro)
+                  false, false, false]  # ax (가속도 - 필요시 true)
+
+    # [설명]
+    # - vyaw (각속도): 자이로 센서 데이터입니다. 회전 보정에 가장 중요합니다.
+    # - yaw (절대각도): 지자기 센서(Mag) 보정이 완벽하지 않다면 false로 둡니다.
+    #   (계속 흐르는 yaw 값을 절대값으로 믿으면 맵이 틀어집니다.)
+    # - ax (가속도): 바퀴 헛돎(Slip) 감지에 도움되지만, 진동이 심하면 끄는 게 낫습니다.
+    #   일단 false로 두고, 주행이 안정적이면 true로 바꿔보세요.
+
+    imu0_differential: false
+    imu0_relative: true        # 시작할 때의 각도를 0으로 기준 잡음
+    imu0_queue_size: 10
+    imu0_remove_gravitational_acceleration: true

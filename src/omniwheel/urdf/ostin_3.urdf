@@ -55,7 +55,7 @@
     </visual>
   </link>
 
-  <joint name="wheel_1_joint" type="continuous">
+  <joint name="wheel_1_joint" type="fixed">
     <parent link="base_link"/>
     <child link="wheel_1_link"/>
     <origin xyz="0.105 0.18187 -0.05" rpy="0 0 1.0472"/>
@@ -72,7 +72,7 @@
     </visual>
   </link>
 
-  <joint name="wheel_2_joint" type="continuous">
+  <joint name="wheel_2_joint" type="fixed">
     <parent link="base_link"/>
     <child link="wheel_2_link"/>
     <origin xyz="-0.21 0 -0.05" rpy="0 0 3.14159"/>
@@ -89,7 +89,7 @@
     </visual>
   </link>
 
-  <joint name="wheel_3_joint" type="continuous">
+  <joint name="wheel_3_joint" type="fixed">
     <parent link="base_link"/>
     <child link="wheel_3_link"/>
     <origin xyz="0.105 -0.18187 -0.05" rpy="0 0 -1.0472"/>

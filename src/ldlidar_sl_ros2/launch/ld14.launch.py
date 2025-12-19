@@ -15,8 +15,8 @@ def generate_launch_description():
             {'laser_scan_topic_name': 'scan'},
             {'point_cloud_2d_topic_name': 'pointcloud2d'},
             # 🌟 수정 완료: URDF의 laser_frame과 일치시킴
-            {'frame_id': 'laser_frame'}, 
-            {'port_name': '/dev/ttyUSB2'},
+            {'frame_id': 'laser_link'}, 
+            {'port_name': '/dev/ttyACM0'},
             {'serial_baudrate' : 115200},
             {'laser_scan_dir': True},
             {'enable_angle_crop_func': False},
