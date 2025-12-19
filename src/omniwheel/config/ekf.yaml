@@ -1,7 +1,7 @@
 ### ekf.yaml ###
 ekf_filter_node:
   ros__parameters:
-    frequency: 30.0
+    frequency: 10.0
     two_d_mode: true      # 2D 로봇이므로 Z, Roll, Pitch 무시
     publish_tf: true      # EKF가 odom -> base_link TF를 발행
 
@@ -25,7 +25,7 @@ ekf_filter_node:
     odom0_config: [false, false, false,
                    false, false, false,
                    true,  true,  false,  # vx, vy (옴니휠이므로 vy 필수!)
-                   false, false, false,   # vyaw (회전 속도)
+                   false, false, true,   # vyaw (회전 속도)
                    false, false, false]
                    
     # [설명]
@@ -45,9 +45,9 @@ ekf_filter_node:
     imu0: /imu/data
     
     imu0_config: [false, false, false,
-                  false, false, true,   # yaw (절대각도 - Mag)
+                  false, false, true,   # yaw (절대각도 - Mag):q
                   false, false, false,
-                  false, false, true,   # vyaw (Z축 각속도 - Gyro)
+                  false, false, false,   # vyaw (Z축 각속도 - Gyro)
                   false, false, false]  # ax (가속도 - 필요시 true)
 
     # [설명]
