@@ -2,23 +2,13 @@
  * @file lipkg.cpp
  * @author LDRobot (support@ldrobot.com)
  * @brief  LiDAR data protocol processing App
- *         This code is only applicable to LDROBOT LiDAR LD00 LD03 LD08 LD14
- * products sold by Shenzhen LDROBOT Co., LTD
- * @version 0.1
- * @date 2021-11-09
- *
- * @copyright Copyright (c) 2021  SHENZHEN LDROBOT CO., LTD. All rights
- * reserved.
- * Licensed under the MIT License (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License in the file LICENSE
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * (Modified: Intuitive Configuration for Omni-Wheel Robot)
  */
 #include "lipkg.h"
+#include <math.h>
+#include <iostream>
+#include <algorithm>
+
 namespace ldlidar {
 
 static const uint8_t CrcTable[256] = {
@@ -67,12 +57,9 @@ LiPkg::LiPkg()
     is_poweron_comm_normal_(false),
     poweron_datapkg_count_(0),
     last_pkg_timestamp_(0) {
-
 }
 
-LiPkg::~LiPkg() {
-
-}
+LiPkg::~LiPkg() {}
 
 void LiPkg::SetProductType(LDType typenumber) {
   typenumber_ = typenumber;
@@ -90,20 +77,14 @@ void LiPkg::SetProductType(LDType typenumber) {
   }
 }
 
-void LiPkg::SetNoiseFilter(bool is_enable) {
-  is_noise_filter_ = is_enable;
-}
+void LiPkg::SetNoiseFilter(bool is_enable) { is_noise_filter_ = is_enable; }
 
 void LiPkg::RegisterTimestampGetFunctional(std::function<uint64_t(void)> timestamp_handle) {
   get_timestamp_ = timestamp_handle;
 }
 
 bool LiPkg::AnalysisOne(uint8_t byte) {
-  static enum {
-    HEADER,
-    VER_LEN,
-    DATA,
-  } state = HEADER;
+  static enum { HEADER, VER_LEN, DATA } state = HEADER;
   static uint16_t count = 0;
   static uint8_t tmp[128] = {0};
   static uint16_t pkg_count = sizeof(LiDARFrameTypeDef);
@@ -120,8 +101,7 @@ bool LiPkg::AnalysisOne(uint8_t byte) {
         tmp[count++] = byte;
         state = DATA;
       } else {
-        state = HEADER;
-        count = 0;
+        state = HEADER; count = 0;
         return false;
       }
       break;
@@ -130,19 +110,12 @@ bool LiPkg::AnalysisOne(uint8_t byte) {
       if (count >= pkg_count) {
         memcpy((uint8_t *)&datapkg_, tmp, pkg_count);
         uint8_t crc = CalCRC8((uint8_t *)&datapkg_, pkg_count - 1);
-        state = HEADER;
-        count = 0;
-        if (crc == datapkg_.crc8) {
-          return true;
-        } else {
-          return false;
-        }
+        state = HEADER; count = 0;
+        if (crc == datapkg_.crc8) return true;
+        else return false;
       }
       break;
-    default:
-      break;
   }
-
   return false;  
 }
 
@@ -154,108 +127,117 @@ bool LiPkg::Parse(const uint8_t *data, long len) {
         poweron_datapkg_count_ = 0;
         is_poweron_comm_normal_ = true;
       }
-      
       speed_ = datapkg_.speed;
       timestamp_ = datapkg_.timestamp;
-      
-      // parse a package is success
       double diff = (datapkg_.end_angle / 100 - datapkg_.start_angle / 100 + 360) % 360;
       if (diff <= ((double)datapkg_.speed * POINT_PER_PACK / lidar_measure_freq_ * 1.5)) {
-
         if (0 == last_pkg_timestamp_) {
           last_pkg_timestamp_ = get_timestamp_();
         } else {
           uint64_t current_pack_stamp = get_timestamp_();
-          int pkg_point_number = POINT_PER_PACK;
-          double pack_stamp_point_step =  
-              static_cast<double>(current_pack_stamp - last_pkg_timestamp_) / static_cast<double>(pkg_point_number - 1);
-          
-          uint32_t diff = ((uint32_t)datapkg_.end_angle + 36000 - (uint32_t)datapkg_.start_angle) % 36000;
-          float step = diff / (POINT_PER_PACK - 1) / 100.0;
+          double pack_stamp_point_step = static_cast<double>(current_pack_stamp - last_pkg_timestamp_) / static_cast<double>(POINT_PER_PACK - 1);
+          uint32_t angle_diff = ((uint32_t)datapkg_.end_angle + 36000 - (uint32_t)datapkg_.start_angle) % 36000;
+          float step = angle_diff / (POINT_PER_PACK - 1) / 100.0;
           float start = (double)datapkg_.start_angle / 100.0;
-          PointData data;
           for (int i = 0; i < POINT_PER_PACK; i++) {
-            data.distance = datapkg_.point[i].distance;
-            data.angle = start + i * step;
-            if (data.angle >= 360.0) {
-              data.angle -= 360.0;
-            }
-            data.intensity = datapkg_.point[i].intensity;
-            data.stamp = static_cast<uint64_t>(last_pkg_timestamp_ + (pack_stamp_point_step * i));
-            frame_tmp_.push_back(PointData(data.angle, data.distance, data.intensity, data.stamp));
+            float angle = start + i * step;
+            if (angle >= 360.0) angle -= 360.0;
+            uint64_t st = static_cast<uint64_t>(last_pkg_timestamp_ + (pack_stamp_point_step * i));
+            frame_tmp_.push_back(PointData(angle, datapkg_.point[i].distance, datapkg_.point[i].intensity, st));
           }
-          last_pkg_timestamp_ = current_pack_stamp; //// update last pkg timestamp
+          last_pkg_timestamp_ = current_pack_stamp;
         }
       }
     }
   }
-
   return true;
 }
 
+// =========================================================================================
+// ⭐⭐ 핵심 수정 함수: 사용자 설정에 따라 데이터 조립 ⭐⭐
+// =========================================================================================
 bool LiPkg::AssemblePacket() {
   float last_angle = 0;
   Points2D tmp, data;
   int count = 0;
 
   if (speed_ <= 0) {
-    frame_tmp_.erase(frame_tmp_.begin(), frame_tmp_.end());
+    frame_tmp_.clear();
     return false;
   }
 
   for (auto n : frame_tmp_) {
-    // wait for enough data, need enough data to show a circle
-	// enough data has been obtained
     if ((n.angle < 20.0) && (last_angle > 340.0)) {
       if ((count * GetSpeed()) > (lidar_measure_freq_ * 1.4)) {
-        if (count >= (int)frame_tmp_.size()) {
-          frame_tmp_.clear();
-        } else {
-          frame_tmp_.erase(frame_tmp_.begin(), frame_tmp_.begin() + count);
-        }
+        frame_tmp_.erase(frame_tmp_.begin(), frame_tmp_.begin() + count);
         return false;
       }
       data.insert(data.begin(), frame_tmp_.begin(), frame_tmp_.begin() + count);
-
       SlTransform trans(typenumber_);
-      data = trans.Transform(data); // transform raw data to stantard data  
-    
-      if (is_noise_filter_ && \
-        (typenumber_ != ldlidar::LDType::LD_14P_2300HZ) && \
-        (typenumber_ != ldlidar::LDType::LD_14P_4000HZ)) {
-        Slbf sb(speed_);
-        tmp = sb.NearFilter(data); // filter noise point
-      } else {
-        tmp = data;
+      data = trans.Transform(data);
+      
+      // =======================================================================
+      // ⭐⭐ [사용자 설정 영역] 이 변수들만 수정하세요! ⭐⭐
+      // =======================================================================
+      
+      // 1. 라이다 설치 회전 보정 (뒤집혀 있으면 180.0, 아니면 0.0)
+      float install_offset = 180.0f; 
+
+      // 2. 거리 제한 (단위: mm)
+      // 너무 가까워서 사라지면 dist_min을 줄이세요 (예: 100.0)
+      float dist_min = 150.0f;   // 15cm 이내 무시
+      float dist_max = 12000.0f; // 12m 이상 무시
+
+      // 3. "삭제할" 각도 범위 (뒤쪽을 자르기 위해 설정)
+      // 90도 ~ 270도 사이(뒤쪽 반원)를 잘라내면 -> 정면 180도만 남습니다.
+      float cut_angle_start = 90.0f;
+      float cut_angle_end   = 270.0f;
+
+      // =======================================================================
+
+      Points2D filtered_tmp; // 최종 데이터를 담을 벡터
+
+      for (auto point : data) {
+        
+        // [A] 거리 필터링 (가까운 노이즈 제거)
+        if (point.distance < dist_min || point.distance > dist_max) {
+            continue; // 유효 거리 밖이면 버림
+        }
+
+        // [B] 설치 각도 보정 (회전)
+        point.angle += install_offset;
+        if (point.angle >= 360.0f) {
+            point.angle -= 360.0f;
+        }
+
+        // [C] 각도 자르기 (원하는 영역만 남기기)
+        // 설정한 범위(Start ~ End) 사이에 들어오면 버립니다.
+        if (point.angle > cut_angle_start && point.angle < cut_angle_end) {
+            continue; // 뒤쪽 영역이므로 버림
+        }
+
+        // 모든 조건을 통과한 포인트만 저장
+        filtered_tmp.push_back(point);
       }
       
+      tmp = filtered_tmp;
+
+      // 데이터 정렬 및 전송 준비
       std::sort(tmp.begin(), tmp.end(), [](PointData a, PointData b) { return a.stamp < b.stamp; });
       if (tmp.size() > 0) {
         SetLaserScanData(tmp);
         SetFrameReady();
-
-        if (count >= (int)frame_tmp_.size()) {
-          frame_tmp_.clear();
-        } else {
-          frame_tmp_.erase(frame_tmp_.begin(), frame_tmp_.begin() + count);
-        }
+        frame_tmp_.erase(frame_tmp_.begin(), frame_tmp_.begin() + count);
         return true;
       }
     }
     count++;
-
     if ((count * GetSpeed()) > (lidar_measure_freq_ * 2)) {
-      if (count >= (int)frame_tmp_.size()) {
-        frame_tmp_.clear();
-      } else {
-        frame_tmp_.erase(frame_tmp_.begin(), frame_tmp_.begin() + count);
-      }
+      frame_tmp_.erase(frame_tmp_.begin(), frame_tmp_.begin() + count);
       return false;
     }
-
     last_angle = n.angle;
   }
-
   return false;
 }
 
@@ -270,66 +252,23 @@ bool LiPkg::GetLaserScanData(Points2D& out) {
     ResetFrameReady();
     out = GetLaserScanData();
     return true;
-  } else {
-    return false;
   }
+  return false;
 }
 
-double LiPkg::GetSpeed(void) { 
-  return (speed_ / 360.0);  // unit  is Hz
-}
-
-LidarStatus LiPkg::GetLidarStatus(void) {
-  return lidarstatus_;
-}
-
-uint8_t LiPkg::GetLidarErrorCode(void) {
-  return lidarerrorcode_;
-}
-
+double LiPkg::GetSpeed(void) { return (speed_ / 360.0); }
+LidarStatus LiPkg::GetLidarStatus(void) { return lidarstatus_; }
+uint8_t LiPkg::GetLidarErrorCode(void) { return lidarerrorcode_; }
 bool LiPkg::GetLidarPowerOnCommStatus(void) {
-  if (is_poweron_comm_normal_) {
-    is_poweron_comm_normal_ = false;
-    return true;
-  } else {
-    return false;
-  }
+  if (is_poweron_comm_normal_) { is_poweron_comm_normal_ = false; return true; }
+  return false;
 }
+void LiPkg::SetLidarStatus(LidarStatus status) { lidarstatus_ = status; }
+void LiPkg::SetLidarErrorCode(uint8_t errorcode) { lidarerrorcode_ = errorcode; }
+bool LiPkg::IsFrameReady(void) { std::lock_guard<std::mutex> lg(mutex_lock1_); return is_frame_ready_; }
+void LiPkg::ResetFrameReady(void) { std::lock_guard<std::mutex> lg(mutex_lock1_); is_frame_ready_ = false; }
+void LiPkg::SetFrameReady(void) { std::lock_guard<std::mutex> lg(mutex_lock1_); is_frame_ready_ = true; }
+void LiPkg::SetLaserScanData(Points2D& src) { std::lock_guard<std::mutex> lg(mutex_lock2_); lidar_frame_data_ = src; }
+Points2D LiPkg::GetLaserScanData(void) { std::lock_guard<std::mutex> lg(mutex_lock2_); return lidar_frame_data_; }
 
-void LiPkg::SetLidarStatus(LidarStatus status) {
-  lidarstatus_ = status;
-}
-
-void LiPkg::SetLidarErrorCode(uint8_t errorcode) {
-  lidarerrorcode_ = errorcode;
-}
-
-bool LiPkg::IsFrameReady(void) {
-  std::lock_guard<std::mutex> lg(mutex_lock1_);
-  return is_frame_ready_; 
-}
-
-void LiPkg::ResetFrameReady(void) {
-  std::lock_guard<std::mutex> lg(mutex_lock1_);
-  is_frame_ready_ = false;
-}
-
-void LiPkg::SetFrameReady(void) {
-  std::lock_guard<std::mutex> lg(mutex_lock1_);
-  is_frame_ready_ = true;
-}
-
-void LiPkg::SetLaserScanData(Points2D& src) {
-  std::lock_guard<std::mutex> lg(mutex_lock2_);
-  lidar_frame_data_ = src;
-}
-
-Points2D LiPkg::GetLaserScanData(void) {
-  std::lock_guard<std::mutex> lg(mutex_lock2_);
-  return lidar_frame_data_; 
-}
-
-}  // namespace ldlidar
-
-/********************* (C) COPYRIGHT SHENZHEN LDROBOT CO., LTD *******END OF
- * FILE ********/
+} // namespace ldlidar
