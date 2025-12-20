@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import rclpy
 from rclpy.node import Node
 from std_msgs.msg import String
@@ -6,9 +7,9 @@ import time
 import threading
 
 # =========================================================
-# [설정] 아두이노 포트 (환경에 맞게 수정하세요)
+# [설정] 아두이노 포트 (/dev/ttyUSB* 확인 필수)
 # =========================================================
-SERIAL_PORT = '/dev/ttyUSB2' 
+SERIAL_PORT = '/dev/ttyUSB1' 
 BAUD_RATE = 115200
 
 class ArmController(Node):
@@ -21,93 +22,82 @@ class ArmController(Node):
             self.get_logger().info(f'✅ Serial Connected to {SERIAL_PORT}')
             time.sleep(2) # 아두이노 리셋 대기
         except Exception as e:
-            self.get_logger().error(f'❌ Serial Connection Failed: {e}')
-            exit()
+            self.get_logger().error(f'❌ Arm Serial Connection Failed: {e}')
+            self.ser = None
 
-        # 2. Publisher (로봇팔 상태 -> AGV)
-        # 토픽: /arm/status
-        # 메시지: "GRIPPED"(성공), "GRIPPED_FAIL"(실패), "RELEASED"(놓기 완료)
+        # 2. Publisher (로봇팔 상태 -> 미션 노드)
         self.publisher_ = self.create_publisher(String, '/arm/status', 10)
 
-        # 3. Subscriber (AGV 상태 -> 로봇팔)
-        # 토픽: /agv/status
-        # 메시지: "ARRIVED_PICK"(집기 시작), "ARRIVED_PLACE"(놓기 시작)
+        # 3. Subscriber (미션 노드 명령 -> 로봇팔)
         self.subscription = self.create_subscription(
             String,
             '/agv/status',
             self.listener_callback,
             10)
         
-        # 4. 시리얼 수신 스레드 시작
+        # 4. 시리얼 수신 스레드
         self.running = True
-        self.serial_thread = threading.Thread(target=self.serial_reader)
-        self.serial_thread.daemon = True
-        self.serial_thread.start()
+        if self.ser:
+            self.serial_thread = threading.Thread(target=self.serial_reader)
+            self.serial_thread.daemon = True
+            self.serial_thread.start()
 
-        self.get_logger().info('🤖 Arm Controller Node is Ready! (Smart Detection Enabled)')
+        self.get_logger().info('🤖 Arm Controller Node Ready!')
 
     def listener_callback(self, msg):
+        """미션 노드로부터 명령을 받으면 아두이노로 토스"""
         command = msg.data
-        self.get_logger().info(f'📩 Received from AGV: "{command}"')
+        self.get_logger().info(f'📩 Command from Mission: "{command}"')
 
         if command == "ARRIVED_PICK":
-            self.get_logger().info('🚀 Starting PICK Sequence...')
+            # 아두이노에게 집기 시퀀스 시작 명령
             self.send_serial("SEQ:PICK")
             
         elif command == "ARRIVED_PLACE":
-            self.get_logger().info('🚀 Starting RELEASE Sequence...')
+            # 아두이노에게 놓기 시퀀스 시작 명령
             self.send_serial("SEQ:RELEASE")
-            
-        else:
-            self.get_logger().warn(f'Unknown command: {command}')
 
     def send_serial(self, cmd):
         if self.ser and self.ser.is_open:
-            self.ser.write((cmd + '\n').encode())
+            try:
+                self.ser.write((cmd + '\n').encode())
+                self.get_logger().info(f'➡️ Send to Arduino: {cmd}')
+            except Exception as e:
+                self.get_logger().error(f"Serial write error: {e}")
 
     def serial_reader(self):
-        """아두이노로부터 완료/실패 신호를 기다림"""
-        while self.running:
-            if self.ser and self.ser.in_waiting:
-                try:
-                    # [노이즈 방지] 깨진 데이터는 무시(ignore)하고 정상 데이터만 처리
+        """아두이노 응답 감지 (성공/실패 판독)"""
+        while self.running and self.ser and self.ser.is_open:
+            try:
+                if self.ser.in_waiting:
                     line = self.ser.readline().decode('utf-8', errors='ignore').strip()
-                    
-                    if not line:
-                        continue
+                    if not line: continue
 
-                    # 1. 집기 성공 (아두이노가 잡았다고 판단함)
+                    # [1] 집기 성공 (Arduino: DONE:PICK)
                     if line == "DONE:PICK":
-                        self.get_logger().info('✅ Pick Success! (Object Detected)')
-                        msg = String()
-                        msg.data = "GRIPPED"
-                        self.publisher_.publish(msg)
-                        self.get_logger().info(f'📤 Pub to AGV: "{msg.data}"')
+                        self.get_logger().info('✅ Pick Success!')
+                        self.publish_status("GRIPPED")
 
-                    # 2. [추가됨] 집기 실패 (허공을 잡음 -> 재시도 요청)
+                    # [2] 집기 실패 (Arduino: FAIL:PICK) -> 여기가 핵심!
                     elif line == "FAIL:PICK":
-                        self.get_logger().warn('⚠️ Pick Failed (Object not found)!')
-                        msg = String()
-                        msg.data = "GRIPPED_FAIL"
-                        self.publisher_.publish(msg)
-                        self.get_logger().info(f'📤 Pub to AGV: "{msg.data}" -> Retry Requested!')
+                        self.get_logger().warn('⚠️ Pick Failed (Retrying...)')
+                        self.publish_status("GRIPPED_FAIL")
 
-                    # 3. 놓기 완료
+                    # [3] 놓기 성공 (Arduino: DONE:RELEASE)
                     elif line == "DONE:RELEASE":
                         self.get_logger().info('✅ Release Success!')
-                        msg = String()
-                        msg.data = "RELEASED"
-                        self.publisher_.publish(msg)
-                        self.get_logger().info(f'📤 Pub to AGV: "{msg.data}"')
+                        self.publish_status("RELEASED")
                         
-                    # 기타 아두이노 디버깅 메시지 출력 (선택 사항)
-                    else:
-                        # self.get_logger().info(f'[Arduino] {line}')
-                        pass
-                        
-                except Exception as e:
-                    self.get_logger().warn(f'Serial Read Warning: {e}')
+            except Exception as e:
+                self.get_logger().warn(f'Serial Read Warning: {e}')
+                time.sleep(1)
+            
             time.sleep(0.01)
+
+    def publish_status(self, status_str):
+        msg = String()
+        msg.data = status_str
+        self.publisher_.publish(msg)
 
 def main(args=None):
     rclpy.init(args=args)
