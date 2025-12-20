@@ -24,7 +24,7 @@ def generate_launch_description():
         parameters=[{'robot_description': robot_desc}]
     )
 
-    # 3. OmniRun (하드웨어 제어)
+    # 3. OmniRun (바퀴/IMU 하드웨어 제어)
     omnirun_node = Node(
         package='omniwheel',
         executable='omnirun',
@@ -32,14 +32,22 @@ def generate_launch_description():
         output='screen'
     )
 
-    # 4. LiDAR 실행
+    # 4. ⭐ [추가됨] Arm Controller (로봇팔 하드웨어 제어)
+    arm_node = Node(
+        package='omniwheel',
+        executable='arm_controller',
+        name='arm_controller_node',
+        output='screen'
+    )
+
+    # 5. LiDAR 실행
     lidar_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             os.path.join(pkg_ldlidar, 'launch', 'ld14.launch.py')
         )
     )
 
-    # 5. ⭐ EKF 노드 실행 (Robot Localization)
+    # 6. EKF 노드 실행 (Robot Localization)
     ekf_config_path = os.path.join(pkg_omniwheel, 'config', 'ekf.yaml')
     
     ekf_node = Node(
@@ -53,6 +61,7 @@ def generate_launch_description():
     return LaunchDescription([
         rsp_node,
         omnirun_node,
+        arm_node,      # 로봇팔 노드 추가
         lidar_launch,
-        ekf_node, # ⭐ EKF 추가됨
+        ekf_node,
     ])

@@ -33,8 +33,8 @@ setup(
             # 2. 키보드 텔레옵 노드
             'teleop = omniwheel.teleop:main',
             
-            # 3. [주석처리] 로봇팔 제어 노드 (파일이 없거나 안 쓸 경우)
-            # 'arm_controller = omniwheel.arm_controller:main',
+            # ⭐ [추가됨] 로봇팔 컨트롤러 등록
+            'arm_controller = omniwheel.arm_controller:main',
         ],
     },
 )
