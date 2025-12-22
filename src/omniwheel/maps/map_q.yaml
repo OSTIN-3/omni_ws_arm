@@ -1,4 +1,4 @@
-image: map_q.pgm
+image: /home/jdamr/omni_ws_arm/src/omniwheel/maps/map_q.pgm
 mode: trinary
 resolution: 0.05
 origin: [-3.13, -1.06, 0]
