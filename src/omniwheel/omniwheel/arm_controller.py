@@ -9,7 +9,7 @@ import threading
 # =========================================================
 # [설정] 아두이노 포트 (/dev/ttyUSB* 확인 필수)
 # =========================================================
-SERIAL_PORT = '/dev/ttyUSB1' 
+SERIAL_PORT = '/dev/ttyUSB0' 
 BAUD_RATE = 115200
 
 class ArmController(Node):
