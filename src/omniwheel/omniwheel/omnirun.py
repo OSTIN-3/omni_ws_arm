@@ -23,7 +23,7 @@ class OmniRun(Node):
         # 1. 시리얼 포트 설정
         try:
             self.serial_port = serial.Serial(
-                port='/dev/ttyUSB1',   # 포트 확인 (/dev/ttyUSB0 or /dev/ttyUSB1)
+                port='/dev/ttyUSB1',  # 포트 확인 (/dev/ttyUSB0 or /dev/ttyUSB1)
                 baudrate=115200,
                 timeout=0.05
             )

@@ -9,15 +9,17 @@ SMS_STS sms_sts;
 struct RobotPose { int joints[5]; };
 
 RobotPose POSE_HOME     = { {2287, 1358, 2351, 2908, 2199} };
-RobotPose POSE_SCAN     = { {2743, 1298, 2708, 2724, 2245} };
-RobotPose POSE_PRE_PICK = { {2817, 1676, 1931, 3151, 2244} };
-RobotPose POSE_PICK     = { {2747, 1807, 2262, 2841, 2244} };
-RobotPose POSE_PLACE    = { {3100, 1996, 2004, 2856, 2244} };
+RobotPose POSE_SCAN     = { { 3373, 1756, 2068, 2821, 2206 } };
+RobotPose POSE_PRE_PICK = { { 3366, 1411, 2576, 2426, 2197 } };
+RobotPose POSE_PICK     = { { 3366, 1411, 2576, 2426, 2197 } };
+RobotPose POSE_PLACE    = { { 1330, 746, 2554, 3156, 2143 } };
 
 const int DEFAULT_OPEN_VAL = 1480;   
 const int DEFAULT_CLOSE_VAL = 2372;  
-int DEFAULT_LOAD_LIMIT = 500;        
-int MOVE_SPEED = 1000;    
+
+// [설정] 부하 한계값 230
+int DEFAULT_LOAD_LIMIT = 130;        
+int MOVE_SPEED = 500;    
 int MOVE_ACC = 30;
 
 #define S_RXD 16
@@ -50,13 +52,13 @@ void moveToPose(RobotPose p, int time_ms) {
   delay(time_ms);
 }
 
-// [핵심 수정] 성공 여부를 반환하는 스마트 닫기 함수
-// true: 물체 잡음 (중간에 부하 걸림)
-// false: 허공 잡음 (끝까지 닫힘)
+// [성공 메시지 포함] 스마트 닫기 함수
 bool runSmoothAdaptiveClose() {
+  Serial.println(">>> [GRIPPER] Adaptive Close Start"); 
   gripper.torqueOn(true);
-  sms_sts.WritePosEx(GRIPPER_ID, DEFAULT_CLOSE_VAL, 1000, 30);
-  delay(400); 
+  
+  sms_sts.WritePosEx(GRIPPER_ID, DEFAULT_CLOSE_VAL, 500, 30);
+  delay(500); 
   
   bool objectDetected = false;
   unsigned long startT = millis();
@@ -64,25 +66,33 @@ bool runSmoothAdaptiveClose() {
   while(millis() - startT < 3000) {
       int load = sms_sts.ReadLoad(GRIPPER_ID);
       int pos = sms_sts.ReadPos(GRIPPER_ID);
+      
       if (load == -1 || pos == -1) { delay(5); continue; }
       
-      // 1. 물체 감지됨!
+      Serial.printf("DEBUG: Load=%d (Limit=%d) / Pos=%d\n", load, DEFAULT_LOAD_LIMIT, pos);
+      
+      // 1. 물체 감지됨! (성공)
       if (abs(load) > DEFAULT_LOAD_LIMIT) {
           sms_sts.WritePosEx(GRIPPER_ID, pos, 0, 0); 
-          Serial.printf("Grip: Object Detected (Load %d)\n", load);
+          Serial.printf(">>> [GRIPPER] ADAPTIVE SUCCESS! Object Detected (Load: %d)\n", load);
           objectDetected = true;
           break;
       }
+      
       // 2. 끝까지 닫힘 (물체 없음)
       if (abs(pos - DEFAULT_CLOSE_VAL) < 30) {
+          Serial.printf(">>> [GRIPPER] FAILED (Empty Hand). Pos: %d\n", pos);
           objectDetected = false;
           break;
       }
-      delay(5);
+      delay(20); 
   }
   return objectDetected;
 }
 
+// =========================================================================
+// SETUP 함수 (필수)
+// =========================================================================
 void setup() {
   Serial.begin(115200);
   delay(1000);
@@ -94,6 +104,9 @@ void setup() {
   torqueAll(true);
 }
 
+// =========================================================================
+// LOOP 함수 (필수)
+// =========================================================================
 void loop() {
   if (Serial.available()) {
     String input = Serial.readStringUntil('\n');
@@ -105,40 +118,29 @@ void loop() {
     if (input == "SEQ:PICK") {
         Serial.println("STATUS:BUSY_PICK");
 
-        // 0. [재시도 대비] 그리퍼 확실히 열기
         sms_sts.WritePosEx(GRIPPER_ID, DEFAULT_OPEN_VAL, 1000, 30);
         
-        // 1. 홈 -> 스캔 이동
         moveToPose(POSE_SCAN, 2000);
-        
-        // 2. 스캔 대기 (5초)
         delay(5000); 
 
-        // 3. 집기 준비 -> 집기
         moveToPose(POSE_PRE_PICK, 2000);
         moveToPose(POSE_PICK, 1500);
         
-        // 4. [핵심] 잡기 시도 및 결과 확인
         bool isGripped = runSmoothAdaptiveClose(); 
         delay(500);
 
-        // 5. 들어 올리기
         moveToPose(POSE_PRE_PICK, 1500);
 
-        // 6. 결과 처리
         if (isGripped) {
-            // 성공: 물체 든 채로 홈 복귀
             moveToPose(POSE_HOME, 2000);
-            Serial.println("DONE:PICK"); // 성공 신호 전송
+            Serial.println("DONE:PICK"); 
         } else {
-            // 실패: 그리퍼 다시 열고 홈 복귀 (재시도 준비)
             sms_sts.WritePosEx(GRIPPER_ID, DEFAULT_OPEN_VAL, 1000, 30);
             delay(1000);
             moveToPose(POSE_HOME, 2000);
-            Serial.println("FAIL:PICK"); // [NEW] 실패 신호 전송
+            Serial.println("FAIL:PICK"); 
         }
     }
-
     // ==================================================================
     // [시나리오 2] 놓기
     // ==================================================================
@@ -151,7 +153,21 @@ void loop() {
         Serial.println("DONE:RELEASE");
     }
 
-    // === 기타 ===
+    // ==================================================================
+    // [추가된 기능] 현재 좌표 읽기 (GET_STAT)
+    // ==================================================================
+    else if (input == "GET_STAT") {
+        int p1 = sms_sts.ReadPos(ID_BASE);
+        int p2 = sms_sts.ReadPos(ID_SHOULDER);
+        int p3 = sms_sts.ReadPos(ID_ELBOW);
+        int p4 = sms_sts.ReadPos(ID_WRIST);
+        int p5 = sms_sts.ReadPos(ID_ROT);
+        
+        // Python으로 데이터 전송 (POS:베이스:숄더:엘보:손목:회전)
+        Serial.printf("POS:%d:%d:%d:%d:%d\n", p1, p2, p3, p4, p5);
+    }
+
+    // === 기타 수동 제어 ===
     else if (input == "TORQUE:OFF") torqueAll(false);
     else if (input == "TORQUE:ON") torqueAll(true);
     else if (input == "G:OPEN") sms_sts.WritePosEx(GRIPPER_ID, DEFAULT_OPEN_VAL, 1000, 30);

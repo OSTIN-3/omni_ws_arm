@@ -7,7 +7,7 @@ import time
 import threading
 
 # =========================================================
-# [설정] 아두이노 포트 (/dev/ttyUSB* 확인 필수)
+# [설정] 아두이노 포트 확인 필수
 # =========================================================
 SERIAL_PORT = '/dev/ttyUSB0' 
 BAUD_RATE = 115200
@@ -25,17 +25,12 @@ class ArmController(Node):
             self.get_logger().error(f'❌ Arm Serial Connection Failed: {e}')
             self.ser = None
 
-        # 2. Publisher (로봇팔 상태 -> 미션 노드)
+        # 2. Publisher & Subscriber
         self.publisher_ = self.create_publisher(String, '/arm/status', 10)
-
-        # 3. Subscriber (미션 노드 명령 -> 로봇팔)
         self.subscription = self.create_subscription(
-            String,
-            '/agv/status',
-            self.listener_callback,
-            10)
+            String, '/agv/status', self.listener_callback, 10)
         
-        # 4. 시리얼 수신 스레드
+        # 3. 시리얼 수신 스레드 시작
         self.running = True
         if self.ser:
             self.serial_thread = threading.Thread(target=self.serial_reader)
@@ -45,16 +40,12 @@ class ArmController(Node):
         self.get_logger().info('🤖 Arm Controller Node Ready!')
 
     def listener_callback(self, msg):
-        """미션 노드로부터 명령을 받으면 아두이노로 토스"""
         command = msg.data
         self.get_logger().info(f'📩 Command from Mission: "{command}"')
 
         if command == "ARRIVED_PICK":
-            # 아두이노에게 집기 시퀀스 시작 명령
             self.send_serial("SEQ:PICK")
-            
         elif command == "ARRIVED_PLACE":
-            # 아두이노에게 놓기 시퀀스 시작 명령
             self.send_serial("SEQ:RELEASE")
 
     def send_serial(self, cmd):
@@ -66,24 +57,29 @@ class ArmController(Node):
                 self.get_logger().error(f"Serial write error: {e}")
 
     def serial_reader(self):
-        """아두이노 응답 감지 (성공/실패 판독)"""
+        """아두이노 응답 감지 및 디버그 로그 처리"""
         while self.running and self.ser and self.ser.is_open:
             try:
                 if self.ser.in_waiting:
                     line = self.ser.readline().decode('utf-8', errors='ignore').strip()
                     if not line: continue
 
-                    # [1] 집기 성공 (Arduino: DONE:PICK)
+                    # [수정] 디버깅 로그 출력 (DEBUG: 또는 >>> 로 시작하는 메시지)
+                    if line.startswith("DEBUG:") or line.startswith(">>>"):
+                        print(f"[Arduino] {line}")
+                        continue
+
+                    # [1] 집기 성공
                     if line == "DONE:PICK":
                         self.get_logger().info('✅ Pick Success!')
                         self.publish_status("GRIPPED")
 
-                    # [2] 집기 실패 (Arduino: FAIL:PICK) -> 여기가 핵심!
+                    # [2] 집기 실패 (재시도 필요)
                     elif line == "FAIL:PICK":
                         self.get_logger().warn('⚠️ Pick Failed (Retrying...)')
                         self.publish_status("GRIPPED_FAIL")
 
-                    # [3] 놓기 성공 (Arduino: DONE:RELEASE)
+                    # [3] 놓기 성공
                     elif line == "DONE:RELEASE":
                         self.get_logger().info('✅ Release Success!')
                         self.publish_status("RELEASED")
