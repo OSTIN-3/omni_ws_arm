@@ -1,3 +1,7 @@
+
+https://github.com/user-attachments/assets/8d668d40-0851-4a6f-91bb-210488451d53
+
+
 OSTIN-3 Omni-Wheel Mobile Manipulator
 OSTIN-3는 ROS 2 기반의 3륜 옴니휠(Omni-wheel) 이동 로봇 플랫폼입니다. LiDAR를 활용한 자율 주행(SLAM/Navigation) 기능과 6축(추정) 로봇팔 제어 기능을 통합하여, 이동과 작업이 모두 가능한 모바일 매니퓰레이터 시스템을 구축하는 것을 목표로 합니다.
 
@@ -6,6 +10,7 @@ OSTIN-3는 ROS 2 기반의 3륜 옴니휠(Omni-wheel) 이동 로봇 플랫폼입
 
 1. omniwheel (Core Package)
 설명: 로봇의 핵심 제어 및 구동을 담당하는 패키지입니다.
+
 
 주요 노드:
 
